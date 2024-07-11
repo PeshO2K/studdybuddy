@@ -1,0 +1,14 @@
+langchain-groq
+duckduckgo-search
+langchain
+langchain-community 
+langchainhub 
+tiktoken 
+langgraph
+langchain-chroma 
+bs4
+huggingface_hub 
+unstructured 
+sentence_transformers
+streamlit
+chromadb

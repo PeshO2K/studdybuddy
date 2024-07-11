@@ -31,7 +31,7 @@ class GraphState(TypedDict):
     research_info_rag : List[str] # this will now be the RAG results
     research_info_web : List[str] # this will now be the web results
     info_needed : bool
-    num_steps : int
+    #num_steps : int
     draft_question_feedback : dict
     rag_questions : List[str]
 
@@ -90,15 +90,3 @@ workflow.add_edge("state_printer", END)
 
 # Compile
 app = workflow.compile()
-
-
-
-
-
-
-
-
-
-
-
-

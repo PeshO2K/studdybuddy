@@ -1,7 +1,6 @@
 from agents import rag_router,web_research_router, rewrite_router
 
 
-
 def route_to_research_rag(state):
     """
     Route question to web search or not.
@@ -15,18 +14,16 @@ def route_to_research_rag(state):
     initial_question = state["initial_question"]
     question_category = state["question_category"]
 
-
-
-
-    router = rag_router.invoke({"initial_question": initial_question, "question_category": question_category})
-    print(router)
+    router = rag_router.invoke(
+        {"initial_question": initial_question, "question_category": question_category})
+    # print(router)
     # print(type(router))
-    print(router['router_decision'])
+    print("*** Decision: ", router['router_decision'])
     if router['router_decision'] == 'research_info':
-        print("---ROUTE question TO RESEARCH INFO---")
+        print("***ROUTE question TO RESEARCH INFO***\n\n")
         return "research_info"
     elif router['router_decision'] == 'draft_response':
-        print("---ROUTE question TO DRAFT response---")
+        print("***ROUTE question TO DRAFT response***\n\n")
         return "draft_response"
 
 
@@ -44,21 +41,20 @@ def route_to_research_web(state):
     question_category = state["question_category"]
 
     research_info_rag = state["research_info_rag"]
-    print("----> State Keys:", state.keys())
-    #research_info_web = state["research_info_web"]
+    # print("----> State Keys:", state.keys())
+    # research_info_web = state["research_info_web"]
 
-
-    router = web_research_router.invoke({"initial_question": initial_question,"question_category": question_category,"rag_agent_response":research_info_rag})
-    print(router)
+    router = web_research_router.invoke(
+        {"initial_question": initial_question, "question_category": question_category, "rag_agent_response": research_info_rag})
+    # print(router)
     # print(type(router))
-    print(router['router_decision'])
+    print("****Decision:  ", router['router_decision'])
     if router['router_decision'] == 'research_info_web':
-        print("---ROUTE question TO RESEARCH INFO---")
+        print("---ROUTE question TO RESEARCH INFO---\n\n")
         return "research_info_web"
     elif router['router_decision'] == 'draft_response':
-        print("---ROUTE question TO DRAFT RESPONSE---")
+        print("---ROUTE question TO DRAFT RESPONSE---\n\n")
         return "draft_response"
-
 
 
 def route_to_rewrite(state):
@@ -74,13 +70,13 @@ def route_to_rewrite(state):
 
     router = rewrite_router.invoke({"initial_question": initial_question,
                                     "question_category": question_category,
-                                     "draft_response":draft_response}
+                                    "draft_response": draft_response}
                                    )
-    print(router)
-    print(router['router_decision'])
+    # print(router)
+    print("***Decison: ", router['router_decision'])
     if router['router_decision'] == 'rewrite':
-        print("---ROUTE TO ANALYSIS - REWRITE---")
+        print("---ROUTE TO ANALYSIS - REWRITE---\n\n")
         return "rewrite"
     elif router['router_decision'] == 'no_rewrite':
-        print("---ROUTE EMAIL TO FINAL EMAIL---")
+        print("---ROUTE EMAIL TO FINAL EMAIL---\n\n")
         return "no_rewrite"

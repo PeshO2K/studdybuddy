@@ -1,4 +1,7 @@
 import os
+import pysqlite3
+import sys
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 from langchain_groq import ChatGroq
 from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain_chroma import Chroma

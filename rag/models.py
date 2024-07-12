@@ -13,7 +13,7 @@ load_dotenv()
 
 chroma_client = chromadb.HttpClient(
     host=os.getenv("vectorDB_host"), port=8000, settings=Settings(allow_reset=True))
-
+print("The api pinging",chroma_client.heartbeat())
 
 #LLM
 GROQ_LLM = ChatGroq(

@@ -3,14 +3,14 @@ import streamlit as st
 
 #-------PAGE SETUP--------------
 about_page=st.Page(
-  page = "/content/drive/MyDrive/StuddyBuddyRepo/views/about.py",
+  page = "views/about.py",
   title="About me",
-  icon=":material/account_circle:",
+  icon="👀",
 )
 project_1_page=st.Page(
-  page = "/content/drive/MyDrive/StuddyBuddyRepo/views/studybot.py",
+  page = "views/studybot.py",
   title="Study Buddy",
-  icon=":material/smart_toy:",
+  icon="🧠",
   default=True,
 )
 

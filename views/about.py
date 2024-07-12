@@ -8,7 +8,7 @@ def show_contact_form():
 #-------Hero section
 col1,col2 =st.columns(2,gap="small",vertical_alignment='center')
 with col1:
-  st.image("/content/drive/MyDrive/StuddyBuddyRepo/assets/my_dip.jpg", width=200)
+  st.image("assets/my_dip.jpg", width=200)
 with col2:
   st.title("Patience Otuke", anchor=False)
   st.write("Electrical Engineer, Solutions Architect, FullStack Developer")

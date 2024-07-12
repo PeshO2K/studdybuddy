@@ -1,5 +1,5 @@
 import streamlit as st
-from rag.rag_app import app
+#from rag.rag_app import app
 
 st.title("Study Buddy")
 
@@ -36,8 +36,8 @@ def generate_response(prompt_input):
     inputs = {"initial_question": prompt_input}
     outputs = {}  # Initialize outputs dictionary
     # Assuming 'app.stream' is properly defined and returns step outputs
-    for step_output in app.stream(inputs):
-        outputs.update(step_output)
+    #for step_output in app.stream(inputs):
+    #    outputs.update(step_output)
 
     final_output_response = outputs.get(
         "final_output_response", {"final_answer": "No response generated"})

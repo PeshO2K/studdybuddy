@@ -57,7 +57,7 @@ The Study Buddy App is an AI-powered companion designed to assist students of th
 1. **Start the Application:**
    Run the Streamlit app to interact with the Study Buddy:
    ```bash
-   streamlit run app.py
+   streamlit run main_app.py
    ```
 
 2. **Ask Questions:**
@@ -90,15 +90,7 @@ print(question_category)  # Outputs: 'course_enquiry'
 
 ---
 
-## File Structure
 
-```
-/study-buddy-app
-│
-├── app.py               # Main Streamlit application
-├── README.md             # Project documentation
-└── requirements.txt      # List of dependencies
-```
 
 ---
 

@@ -1,6 +1,6 @@
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-from models import GROQ_LLM, retriever
+from rag.models import GROQ_LLM, retriever
 from langchain_core.runnables import RunnablePassthrough
 
 

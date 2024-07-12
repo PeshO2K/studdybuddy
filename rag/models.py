@@ -12,12 +12,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 chroma_client = chromadb.HttpClient(
-    host=os.getenv["vectorDB_host"], port=8000, settings=Settings(allow_reset=True))
+    host=os.getenv("vectorDB_host"), port=8000, settings=Settings(allow_reset=True))
 
 
 #LLM
 GROQ_LLM = ChatGroq(
-    api_key=os.getenv["groq_API_Key"],
+    api_key=os.getenv("groq_API_Key"),
     model="llama3-70B-8192")
 
 

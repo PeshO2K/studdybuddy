@@ -11,5 +11,5 @@ huggingface_hub
 unstructured 
 sentence_transformers
 streamlit
-chromadb
+chromadb=0.3.29
 python-dotenv

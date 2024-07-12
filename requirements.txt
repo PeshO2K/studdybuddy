@@ -5,11 +5,11 @@ langchain-community
 langchainhub 
 tiktoken 
 langgraph
-langchain-chroma 
+langchain-chroma==0.1.1
 bs4
 huggingface_hub 
 unstructured 
 sentence_transformers
 streamlit
-chromadb==0.4.0 
+chromadb==0.3.29
 python-dotenv

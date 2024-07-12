@@ -1,5 +1,5 @@
 import streamlit as st
-#from rag.rag_app import app
+from rag.rag_app import app
 
 st.title("Study Buddy")
 

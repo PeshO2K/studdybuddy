@@ -4,14 +4,17 @@ from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain_chroma import Chroma
 import chromadb
 from chromadb.config import Settings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 chroma_client = chromadb.HttpClient(
-    host="13.51.235.2", port=8000, settings=Settings(allow_reset=True))
+    host=os.getenv["vectorDB_host"], port=8000, settings=Settings(allow_reset=True))
 
 
 #LLM
 GROQ_LLM = ChatGroq(
-    api_key=os.environ["groq_API_Key"],
+    api_key=os.getenv["groq_API_Key"],
     model="llama3-70B-8192")
 
 

@@ -12,3 +12,4 @@ unstructured
 sentence_transformers
 streamlit
 chromadb
+python-dotenv

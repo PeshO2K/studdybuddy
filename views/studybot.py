@@ -1,4 +1,6 @@
 import streamlit as st
+import time
+from streamlit_chat import message
 from rag.rag_app import app
 
 st.title("Study Buddy")
@@ -12,8 +14,9 @@ if "messages" not in st.session_state:
 # Display chat messages
 print("Displaying chat messages...")
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    with st.chat_message(message["role"], avatar="assets/robot_2_50dp_purple.svg"):
         st.write(message["content"])
+
 
 # Function to clear chat history
 
@@ -28,14 +31,21 @@ def clear_chat_history():
 if st.sidebar.button('Clear Chat History', on_click=clear_chat_history):
     print("Chat history cleared!")
 
+# Function to stream response
+def stream_output(stream_object):
+  stream_objects = stream_object.split(" ")
+  for chunk in stream_objects:
+    # print(chunk)
+    yield chunk + " "
+    time.sleep(0.02)
 # Function to generate response
 
 
 def generate_response(prompt_input):
     print(f"Generating response for: {prompt_input}")
     inputs = {"initial_question": prompt_input}
-    outputs = {}  # Initialize outputs dictionary
-    # Assuming 'app.stream' is properly defined and returns step outputs
+
+    outputs = {}    
     for step_output in app.stream(inputs):
         outputs.update(step_output)
 
@@ -45,18 +55,23 @@ def generate_response(prompt_input):
     return response
 
 
+
 # Main chat interface
 prompt = st.chat_input("Type question here:", key="user_input")
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar="assets/face_5_50dp_blackNYellow.svg"):
       st.markdown(prompt)
 
     with st.spinner("Thinking..."):
+        
         llm_answer = generate_response(prompt)
-        with st.chat_message("assistant"):
-          st.markdown(llm_answer)
+        
+        with st.chat_message("assistant", avatar="assets/robot_2_50dp_purple.svg"):
+            st.write_stream(stream_output(llm_answer))
+
 
     st.session_state.messages.append(
         {"role": "assistant", "content": llm_answer})
+  

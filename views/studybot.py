@@ -3,33 +3,43 @@ import time
 from streamlit_chat import message
 from rag.rag_app import app
 
+#-----fetch user sessions----#
+sessions={}
+
 st.title("Study Buddy")
 
-# Initialize chat history if not present
+
+if "sessions_history" not in st.session_state:
+   st.session_state.sessions_history = sessions
+
 if "messages" not in st.session_state:
     print("Initializing session state for messages...")
     st.session_state.messages = [
         {"role": "assistant", "content": "How may I assist you today?"}]
+session_id_to_index = {sid: idx for idx, sid in enumerate(
+    st.session_state.sessions_history.keys())}
+
+begin = st.sidebar.container()
+if st.sidebar.button('New Chat'):
+    st.session_state.pickname = "new-chat"
+
+begin.selectbox("Chat History", st.session_state.sessions_history.keys(),key='pickname',
+                format_func=lambda sid: st.session_state.sessions_history[sid]["session_title"],
+                placeholder='Visit Previous Chat...',
+                )
+st.session_state.messages = st.session_state.sessions_history[st.session_state.pickname]["session_messages"]
+st.session_state.active_session=st.session_state.pickname
 
 # Display chat messages
-print("Displaying chat messages...")
 for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar="assets/robot_2_50dp_purple.svg"):
+    avatar_link = "assets/face_5_50dp_blackNYellow.svg" if message[
+        "role"] == "user" else "assets/robot_2_50dp_purple.svg"
+    with st.chat_message(message["role"], avatar=avatar_link):
         st.write(message["content"])
 
+if st.sidebar.button('In bot'):
+    st.session_state.pickname = "new-chat"
 
-# Function to clear chat history
-
-
-def clear_chat_history():
-    print("Clearing chat history...")
-    st.session_state.messages = [
-        {"role": "assistant", "content": "How may I assist you today?"}]
-
-
-# Clear chat history button
-if st.sidebar.button('Clear Chat History', on_click=clear_chat_history):
-    print("Chat history cleared!")
 
 # Function to stream response
 def stream_output(stream_object):
@@ -38,16 +48,15 @@ def stream_output(stream_object):
     # print(chunk)
     yield chunk + " "
     time.sleep(0.02)
+
 # Function to generate response
-
-
 def generate_response(prompt_input):
     print(f"Generating response for: {prompt_input}")
     inputs = {"initial_question": prompt_input}
 
-    outputs = {}    
+    outputs = {}
     for step_output in app.stream(inputs):
-        outputs.update(step_output)
+       outputs.update(step_output)
 
     final_output_response = outputs.get(
         "final_output_response", {"final_answer": "No response generated"})

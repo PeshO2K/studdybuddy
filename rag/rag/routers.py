@@ -58,16 +58,15 @@ def route_to_research_web(state):
 
 
 def route_to_rewrite(state):
+    """Function to choose if the response 
+    should be rewritten or not
+    """
 
     print("---ROUTE TO REWRITE---")
     initial_question = state["initial_question"]
     question_category = state["question_category"]
 
     draft_response = state["draft_response"]
-    # research_info = state["research_info"]
-
-    # draft_response = "Yo we can't help you, best regards Sarah"
-
     router = rewrite_router.invoke({"initial_question": initial_question,
                                     "question_category": question_category,
                                     "draft_response": draft_response}
@@ -78,5 +77,5 @@ def route_to_rewrite(state):
         print("---ROUTE TO ANALYSIS - REWRITE---\n\n")
         return "rewrite"
     elif router['router_decision'] == 'no_rewrite':
-        print("---ROUTE EMAIL TO FINAL EMAIL---\n\n")
+        print("---ROUTE RESPONSE TO FINAL RESPONSE---\n\n")
         return "no_rewrite"

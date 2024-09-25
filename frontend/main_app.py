@@ -1,34 +1,34 @@
 import streamlit as st
 from forms.login_form import login_form
 from forms.signup_form import signup_form
-
+from utils.auth_handler import logout
 
 # # #------Initialise session state attributes
 if 'authentication_status' not in st.session_state:
     st.session_state.authentication_status = None
 
-if 'signing_in' not in st.session_state:
-   st.session_state.signing_in = False
+if 'signing_up' not in st.session_state:
+   st.session_state.signing_up = False
 
 if 'nav_position' not in st.session_state:
    st.session_state.nav_position = 'sidebar'
 
-# Function to handle log out
 
+def render_logout_btn():
+    # Render a logout button
+  if st.session_state.authentication_status:
+    with st.sidebar:
+      # st.text(st.session_state.access_token)
+      for idx in range(10):
+        st.empty().write(">>>>>>>>>>")
+    logout_btn = st.sidebar.button("Log out", use_container_width=True)
+    if logout_btn:
+        logout()
 
-def logout():
-  #  print("*******log out start ******")
-   st.session_state.authentication_status = None
-   st.session_state.signing_in = False
-   st.session_state.nav_position = 'hidden'
-   st.rerun()
-  #  print("*******log out end ******")
-
-# Update signin to true or false in order to switch pages from log in to signin when respective button is clicked
 
 
 def update_login_status():
-  st.session_state.signing_in = not st.session_state.signing_in
+  st.session_state.signing_up = not st.session_state.signing_up
   st.rerun()
 
 
@@ -55,12 +55,13 @@ page_dict = {
 
 # ------ Login/SignUp pages or the Main app depending on authentication status
 if st.session_state.authentication_status:
+    
 
     pg = st.navigation(page_dict, position='sidebar'if st.session_state.authentication_status else 'hidden'
                        )
 
 else:
-    if not st.session_state.signing_in:
+    if not st.session_state.signing_up:
       signup_btn = st.sidebar.button("Sign Up", use_container_width=True)
       pg = st.navigation([st.Page(login_form)])
 
@@ -77,16 +78,7 @@ else:
       # signup_form()
       pg = st.navigation([st.Page(signup_form)])
 
-      st.title("Signing In Page")
+      st.title("Signing Up Page")
 
 pg.run()  # Render the selected page
-
-
-# Render a logout button
-if st.session_state.authentication_status:
-  with st.sidebar:
-    for idx in range(10):
-      st.empty().write(">>>>>>>>>>")
-  logout_btn = st.sidebar.button("Log out", use_container_width=True)
-  if logout_btn:
-      logout()
+render_logout_btn()

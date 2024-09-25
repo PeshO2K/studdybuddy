@@ -6,7 +6,7 @@ def generic_form(location='main', fields=None, key='Sample Form'):
     if location == 'main':
         new_form = st.form(key=key,clear_on_submit=True)
     elif location == 'sidebar':
-        new_form = st.sidebar.form(key=key, clear_on_submit=True)
+        new_form = st.sidebar.form(key=key, clear_on_submit=False)
     elif location == 'hidden':
         pass
     else:
@@ -28,7 +28,7 @@ def generic_form(location='main', fields=None, key='Sample Form'):
         values = {}
         for field_name, field_value in fields.items():
             if field_name =='Title':
-                new_form.title(field_value,)
+                new_form.title(field_value)
             elif field_name == 'Subtitles':
                 for subtitle in field_value:
                     new_form.subheader(subtitle)

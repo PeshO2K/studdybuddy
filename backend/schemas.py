@@ -1,28 +1,35 @@
-from pydantic import BaseModel,EmailStr
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from uuid import UUID
+from datetime import datetime
 from typing import Optional
 
 
 # Create Chat Session Schemas
 class ChatSessionBaseSchema(BaseModel):
-    title: str
-
-
-class ChatSessionCreateSchema(ChatSessionBaseSchema):
+    model_config = ConfigDict(from_attributes=True)
     messages: list
     
 
 
-class ChatSessionUpdateSchema(BaseModel):
-    messages: list
+class ChatSessionCreateSchema(ChatSessionBaseSchema):
+    title: str
+    
 
-class ChatSessionSchema(ChatSessionBaseSchema):
+class ChatSessionUpdateSchema(ChatSessionCreateSchema):
+    pass
+
+class ChatSessionDetailsSchema(ChatSessionCreateSchema):
+    updated_at: datetime
+
+
+class ChatSessionSchema(ChatSessionCreateSchema):
     id: UUID
     user_id: UUID
 
-    class Config:
-        orm_mode = True
+
+
         
+
 
 # Create User Schemas
 class UserBaseSchema(BaseModel):
@@ -32,26 +39,24 @@ class UserBaseSchema(BaseModel):
 
 class UserLogInSchema(UserBaseSchema):
     password: str
+class UserProfileSchema(UserBaseSchema):
+    email: EmailStr
 
 
 class UserCreateSchema(UserLogInSchema):
     email: EmailStr
     
 class UserSchema(UserBaseSchema):
+    model_config = ConfigDict(from_attributes=True)
     id: UUID
     email: EmailStr
     refresh_token: Optional[str]
     chat_sessions: list[ChatSessionSchema]=[]
     hashed_password:str # to remove
-    class Config:
-        orm_mode = True
+    
 
 
 #   Token
 class TokenSchema(BaseModel):
     access_token: str
     token_type:str
-
-#  Token Data
-class TokenDataSchema(BaseModel):
-    username: str

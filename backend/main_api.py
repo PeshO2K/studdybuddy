@@ -1,10 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException , Cookie, Response
-from fastapi.security import OAuth2PasswordRequestForm
-# import uvicorn
-# from fastapi_jwt_auth import AuthJWT
 from sqlalchemy.orm import Session
 from .sql_db import get_db, engine
-from .mongodb import get_chat_logs_collection
+from .mongo_db import get_collection
 from . import crud, schemas, auth ,models
 from fastapi.responses import JSONResponse
 import uuid
@@ -13,106 +10,131 @@ import uuid
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
-# Response.set_cookie()
-# Sign up a new user
+# Dependencies
+
+# Provides an instance of UserCRUD
+# This is used to perform CRUD operations on the users table in the database
+# Takes in a database session and returns a UserCRUD object
+def get_user_crud(db: Session = Depends(get_db)):
+    return crud.UserCRUD(db)
+
+# Provides an instance of ChatSessionCRUD
+# This is used to perform CRUD operations on chat sessions (without logs)
+# Takes in a database session and returns a ChatSessionCRUD object
+def get_chat_crud(db: Session = Depends(get_db)):
+    return crud.ChatSessionCRUD(db)
+
+# Provides an instance of ChatSessionCRUD with log handling
+# This is used to perform CRUD operations on chat sessions, including logs (chat history)
+# Takes in a database session and a MongoDB collection (for storing chat logs)
+# Returns a ChatSessionCRUD object configured to manage both database and log collection
+def get_chat_with_log_crud(db: Session = Depends(get_db), collection=Depends(get_collection)):
+    return crud.ChatSessionCRUD(db, collection=collection)
+
+# Verifies the user's authentication status
+# Extracts the JWT token using OAuth2 scheme, and uses it to retrieve the current authenticated user
+# Takes in the token and a UserCRUD instance and returns the authenticated user's details
+def is_user_auth(token: str = Depends(auth.oauth2_scheme), user_crud=Depends(get_user_crud)):
+    return auth.Auth(user_crud).get_current_user(token)
+
+## Utility functions
+# Function to retrieve and format all chat sessions for a specific user
+# Takes in the user's ID and a ChatSessionCRUD instance
+# Finds all chat sessions for the user, formats them, and returns the formatted list
+def get_formatted_chat_sessions(user_id, chat_crud):
+    sessions = chat_crud.find_all(user_id=user_id)
+    formatted_sessions = chat_crud.format(sessions)
+    return formatted_sessions
+
+
+# Registers a new user in the system
+# Expects a payload matching the UserCreateSchema
+# Returns the newly created user's details after successful registration
 @app.post('/signup',  status_code=201, tags=['Registration'])
-async def signup_user(user:schemas.UserCreateSchema, db:Session=Depends(get_db)):
-    db_user_email = crud.get_user_by_email(db, email=user.email)
-    if db_user_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    db_user_username = crud.get_user_by_username(db, username=user.username)
-    if db_user_username:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    return crud.create_user(db=db, user=user)
+async def signup_user(user:schemas.UserCreateSchema, user_crud=Depends(get_user_crud)):
+    return auth.Auth(user_crud).register_user(user)
 
 
-# Log in user
-#  Sending a cookie at initial log in and subsequent login when the token expires
+# Authenticates a user and provides access & refresh tokens
+# Sets the refresh token as a secure, HTTP-only cookie
+# Expects user login details (username, password) matching UserLogInSchema
+# Returns the access token in the response body and sets refresh token in the cookie
 @app.post('/login', response_model=schemas.TokenSchema, status_code=200, tags=['Registration'])
-# async def login_user(user: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-async def login_user(user: schemas.UserLogInSchema, db: Session = Depends(get_db)):
-    db_user = auth.authenticate_user(db, user.username, user.password)
-    if not db_user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    access_token, refresh_token = auth.generate_tokens(
-        data={'sub': user.username},db=db)
-     
-    # --- minor fix to handle error:
-    token = access_token.access_token
-    token_type = access_token.token_type
-    access_token = {'access_token':token,'token_type':token_type}
-
-    # access_token = {"message": "Come to the dark side, we have cookies"}
-    # ------ToDo: Also send back an HTTPOnly cookie with refresh token, inside the response....
-    response = JSONResponse(content=access_token)
-    response.set_cookie(key="jwt", value=refresh_token)
+async def login_user(user: schemas.UserLogInSchema, user_crud=Depends(get_user_crud)):
+    access_token, refresh_token = auth.Auth(user_crud).authenticate_user(user)
+    response = JSONResponse(content=access_token.model_dump())
+    response.set_cookie(key="jwt", value=refresh_token,
+                        httponly=True, secure=True)
     return response
-    #return access_token
 
-# Log out user
-#  Delete cookie
-@app.get('/logout', status_code=200, tags=['Registration'])
-async def logout_user( response:Response, jwt: str=Cookie(None),db:Session = Depends(get_db)):
-    auth.handle_logout(jwt,db)    
+
+# Logs out the currently authenticated user by invalidating the refresh token
+# Deletes the 'jwt' cookie from the user's browser
+# Expects the current JWT to be provided in cookies
+@app.get('/logout', status_code=204, tags=['Registration'])
+async def logout_user(response: Response, jwt: str = Cookie(None),current_user: schemas.UserSchema = Depends(is_user_auth), user_crud=Depends(get_user_crud)):
+    auth.Auth(user_crud).logout(jwt, current_user.username)
     response.delete_cookie(key="jwt")
-    return {'Success': jwt}
-    #return access_token
 
 
-# get new access token
-# @app.get("/refresh", response_model=schemas.TokenDataSchema, tags=['Registration'])
-@app.get("/refresh", tags=['Registration'])
-# has to be the same name as the key parameter
-async def refresh_access(jwt: str = Cookie(None), db: Session = Depends(get_db)):
-        if jwt:
-            return auth.handle_refresh(jwt,db)
-        raise HTTPException(401, "Unauthorised")
-
-#Get all sessions
-@app.get('/sessions', status_code=200,tags=['Chat'])
-async def get_sessions(db: Session = Depends(get_db)):
-    return crud.get_chat_sessions(db=db)
+# Generates a new access token using the refresh token
+# Expects the refresh token to be provided in cookies
+# Returns a new access token in the response body
+@app.get("/refresh", response_model=schemas.TokenSchema, tags=['Registration'])
+async def refresh_access(jwt: str = Cookie(None), user_crud=Depends(get_user_crud)):
+    return auth.Auth(user_crud).refresh(jwt)
 
 
-#Get User Profile
-@app.get('/users/me', status_code=200, tags=['User'])
-async def get_user_details(current_user: schemas.UserSchema = Depends(auth.get_current_active_user)):
+
+# Retrieves the currently authenticated user's profile
+# Expects the JWT token for authentication
+# Returns the user's profile data matching the UserProfileSchema
+@app.get('/users/me', status_code=200, response_model= schemas.UserProfileSchema, tags=['User'])
+async def get_user_details(current_user: schemas.UserSchema = Depends(is_user_auth)):
     return current_user
 
-#Get a User's Sessions
+# Retrieves all chat sessions belonging to the authenticated user
+# Expects the JWT token for authentication
+# Returns a formatted list of the user's chat sessions
 @app.get('/users/me/sessions/', status_code=200,tags=['User Session'])
-async def get_user_sessions(current_user: schemas.UserSchema = Depends(auth.get_current_active_user), db: Session = Depends(get_db)):
-    return crud.get_chat_sessions(db=db,user_id=current_user.id)
+async def get_user_sessions(current_user: schemas.UserSchema = Depends(is_user_auth), chat_crud = Depends(get_chat_crud)):
+    return get_formatted_chat_sessions(current_user.id,  chat_crud)
 
 
-# Add a new chat session
+# Creates a new chat session for the authenticated user
+# Expects a payload matching ChatSessionCreateSchema
+# Returns the newly created session's ID
 @app.post('/users/me/sessions/', status_code=201, tags=['User Session'])
-async def add_session(chat_session: schemas.ChatSessionCreateSchema, db: Session = Depends(get_db), chat_log: list = Depends(get_chat_logs_collection), current_user: schemas.UserSchema = Depends(auth.get_current_active_user)):
-    new_session = crud.create_chat_session(db, chat_log, chat_session, current_user.id)
-    # return the session id {'session': new_session, 'db':db}
-    # return {'session': new_session, 'msg':chat_session}
+async def add_session(chat_session: schemas.ChatSessionCreateSchema, chat_crud = Depends(get_chat_with_log_crud), current_user: schemas.UserSchema = Depends(is_user_auth)):
+    new_session = chat_crud.create_new(chat_session, current_user.id)
     return {"session_id":new_session.id}
 
+# Retrieves detailed information about a specific chat session
+# Expects a valid session_id in the URL path and the user must be authenticated
+# Returns the session's details matching ChatSessionDetailsSchema
+@app.get('/users/me/sessions/{session_id}', response_model=schemas.ChatSessionDetailsSchema, status_code=200, tags=['User Session'])
+async def get_session(session_id: uuid.UUID, chat_crud=Depends(get_chat_with_log_crud), current_user: schemas.UserSchema = Depends(is_user_auth)):
+    return chat_crud.get_session(session_id, current_user.id)
 
-#Get chat session info
-@app.get('/users/me/sessions/{session_id}', status_code=200, tags=['User Session'])
-async def get_session(session_id: uuid.UUID, db: Session = Depends(get_db), chat_log: list = Depends(get_chat_logs_collection), current_user: schemas.UserSchema = Depends(auth.get_current_active_user)):
-    return crud.get_session(db,chat_log, session_id)
-# Get chat session log
-@app.get('/users/me/sessions/{session_id}/log', status_code=200, tags=['User Session'])
-async def get_session(session_id: uuid.UUID, chat_log: list = Depends(get_chat_logs_collection), current_user: schemas.UserSchema = Depends(auth.get_current_active_user)):
-    session_log =  crud.get_session_log(chat_log, session_id)
-    if session_log:
-        return session_log
+
+# Retrieves the log (messages) of a specific chat session for the authenticated user
+# Expects a valid session_id in the URL path and the user must be authenticated
+# Returns the chat log or raises a 404 error if the log could not be retrieved
+@app.get('/users/me/sessions/{session_id}/log', status_code=200, response_model=schemas.ChatSessionBaseSchema, tags=['User Session'])
+async def get_session(session_id: uuid.UUID, chat_crud=Depends(get_chat_with_log_crud), current_user: schemas.UserSchema = Depends(is_user_auth)):
+    chat_log = chat_crud.get_logs(session_id, current_user.id)
+    if chat_log:
+        return chat_log
     raise HTTPException(404, "Could not fetch chat log")
 
-# Add messages to chat session log
-
-
+# Updates an existing chat session for the authenticated user
+# Expects a valid session_id in the URL path and a payload matching ChatSessionUpdateSchema
+# Returns a message if the session was updated, or if no changes were made
 @app.put('/users/me/sessions/{session_id}', status_code=200, tags=['User Session'])
-async def update_session(session_id: uuid.UUID, chat_session: schemas.ChatSessionUpdateSchema, chat_log: list = Depends(get_chat_logs_collection),  current_user: schemas.UserSchema = Depends(auth.get_current_active_user)):
-    session_updated = crud.update_session_log(chat_log, session_id, chat_session.messages)
-    if session_updated:
-        return {"detail": "Updated successfully!"}
-    raise HTTPException(404, detail="Could not update session")
+async def update_session(session_id: uuid.UUID, chat_session: schemas.ChatSessionUpdateSchema, chat_crud=Depends(get_chat_with_log_crud), current_user: schemas.UserSchema = Depends(is_user_auth)):
+    if chat_session.title or chat_session.messages:        
+        title_updated, log_updated = chat_crud.update_chat(
+            session_id, chat_session, current_user.id)
+        if title_updated or log_updated:        
+            return {"detail": f"Session updated successfully"}
+    return {"detail": "Session is already up to date"}

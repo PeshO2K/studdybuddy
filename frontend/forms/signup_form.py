@@ -31,11 +31,19 @@ def signup_form():
     
          res = requests.post(BASE_URL+'/signup',json=json_data)
          if res.status_code == 201:
-             st.text(res.text)
+            st.text(res.text)
+            st.success("Check your email for the verification link")
+            # verification_token = st.query_params.get('ver_token', None)
+            # if verification_token:
+            #     st.success("Account verified, please log in")
+            #     #  st.session_state['signing_up'] = False
+            # else:
+            #     st.warning("Please verify Account before log in")
          
-             st.session_state['signing_up'] = False
+            
          
          else:
+           print_error(res.json().get('detail',"Username or email already exists"), 'sidebar')
            print_error("Error: User was not registered, please try again.")
          st.session_state['authentication_status'] = None
         

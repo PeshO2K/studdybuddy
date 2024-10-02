@@ -40,3 +40,13 @@ def handle_refresh():
       return access_token
    else:
       logout()
+
+
+def handle_verification(token):
+   VERIFICATION_URL = BASE_URL+f'/verify'
+   response = loggedin_session.post(VERIFICATION_URL,json={"token":token})
+   if response.status_code == 200:
+      st.success("EMAIL HAS BEEN VERIFIED")
+      st.query_params.clear()
+      return
+   

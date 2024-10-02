@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, UUID, DateTime
+from sqlalchemy import Column, String, ForeignKey, UUID, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from .sql_db import Base
 import uuid
@@ -51,6 +51,7 @@ class User(ParentModel,Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     refresh_token = Column(String, nullable=True)
+    is_verified = Column(Boolean, nullable=False, default=False)
 
     chat_sessions = relationship("ChatSession", back_populates="user")
 

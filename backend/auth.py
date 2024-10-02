@@ -3,10 +3,14 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt,JWTError
 from passlib.context import CryptContext
 from .schemas import *
-
+from itsdangerous import URLSafeTimedSerializer
 from . import crud, schemas
 from datetime import datetime, timedelta, timezone
+import logging
 
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 #TODO: refactor, cleanup,comment, remove test data
 
 ALGORITHM = 'HS256'
@@ -14,6 +18,8 @@ ACCESS_TOKEN_EXP = timedelta(minutes=20)
 ACCESS_TOKEN_KEY = 'veryfakeaccesstokenprivatekey'
 REFRESH_TOKEN_EXP = timedelta(minutes=40)
 REFRESH_TOKEN_KEY = 'veryfakerefreshtokenprivatekey'
+VERIFICATION_TOKEN_KEY = 'veryfakeemailverificationtokenprivatekey'
+RESET_TOKEN_KEY = 'veryfakeresettokenprivatekey'
 
 
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -50,6 +56,26 @@ class TokenHandler:
     """
     Manages JWT token creation and verification.
     """
+    
+    def _getserializer(self, secret_key, salt:str):
+        return URLSafeTimedSerializer(secret_key=secret_key, salt=salt)
+
+    def generate_url_safe_token(self, data: dict, serializer):
+        
+        return serializer.dumps(data)
+    def decode_url_safe_token(self, token: str, serializer):
+        try:
+            payload = serializer.loads(token)
+            email : EmailStr = payload.get('sub')
+            if not email:
+                raise HTTPException(401, "[decode url token] Unauthorised")
+            return email
+        except Exception as e:
+            logger.error(f"Error decoding url token: {e}")
+
+    
+
+
     # Create tokens general function
     def _create_token(self, data: dict, expires_delta: timedelta, secret_key):
         """
@@ -67,8 +93,9 @@ class TokenHandler:
         encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=ALGORITHM)
         return encoded_jwt
 
-    # Create access token
+    
 
+    # Create access token
     def generate_access_token(self, data: dict):
         """
         Generates an access token.
@@ -182,6 +209,23 @@ class Auth(PasswordHandler, TokenHandler):
         if db_user.refresh_token:
             return db_user
         raise HTTPException(401, "Unauthorised")
+    
+    def verify_email(self, token:str):
+        """
+        Verifies a user's email address and returns the user if verified
+
+        :param token: The token containing an encoded email
+        :return: The user if verified otherwise, None
+        :raises HTTPException: If verification fails.
+        """
+        serializer = self._getserializer(
+            VERIFICATION_TOKEN_KEY, "email-configuration")
+        email = self.decode_url_safe_token(token, serializer)
+        db_user = self.user_crud.find_by(email=email)
+        if db_user:
+           return self.user_crud.update_fields(db_user.id,is_verified=True) is not None
+               
+        raise HTTPException(401, "[verify_email] Email could not be verified")
 
    
     def authenticate_user(self,  user:schemas.UserLogInSchema):
@@ -193,8 +237,8 @@ class Auth(PasswordHandler, TokenHandler):
         :raises HTTPException: If authentication fails.
         """
         db_user = self.user_crud.find_by(username=user.username)
-        # if user:
-        #     raise HTTPException(403,detail=user)
+        if not db_user.is_verified:
+            raise HTTPException(403,"Email is not verfied")
         if db_user and self.verify_password(user.password, db_user.hashed_password):
             to_encode = {"sub": user.username}
             access_token = self.generate_access_token(to_encode)
@@ -205,9 +249,9 @@ class Auth(PasswordHandler, TokenHandler):
         raise HTTPException(
             status_code=403, detail="Invalid username or password")
     
-    def register_user(self,  user:schemas.UserCreateSchema):
+    def __create_user(self,  user:schemas.UserCreateSchema):
         """
-        Registers a new user in the database.
+        Creates  a new user in the database.
 
         :param user: The user creation schema containing user details.
         :raises HTTPException: If the email or username is already taken.
@@ -220,6 +264,60 @@ class Auth(PasswordHandler, TokenHandler):
             raise HTTPException(
                 status_code=400, detail="Username already exists")
         return self.user_crud.create_new(user)
+    
+
+    def register_user(self, user:schemas.UserCreateSchema):
+        """
+        Registers a new user in the database.
+
+        :param user: The user creation schema containing user details.
+        :raises HTTPException: If the email or username is already taken.
+        :return: The newly created user and the verification url token.
+        """
+        # Create new user
+        new_user = self.__create_user(user)
+
+        #generate verification token
+        serializer = self._getserializer(VERIFICATION_TOKEN_KEY,"email-configuration")
+        verification_token = self.generate_url_safe_token({"sub":new_user.email},serializer)
+
+        return new_user, verification_token
+    
+    def request_reset(self, email):
+        """
+        Send reset link for password reset.
+
+        :param email: The email to send the verification link to.
+        :raises HTTPException: If the email or username is already taken.
+        :return: The newly created user and the verification url token.
+        """
+        # Find th db_user
+        db_user = self.user_crud.find_by(email=email)
+        if not  db_user:
+            raise HTTPException(404, "Email is not registered")
+        # generate reset token link
+        serializer = self._getserializer(RESET_TOKEN_KEY,"password-reset")
+        reset_token = self.generate_url_safe_token({"sub":email},serializer)
+
+        return reset_token
+
+    def reset_password(self, token: str,password:str):
+        """
+        Verifies a user's email address and returns the user if verified
+
+        :param token: The token containing an encoded email
+        :return: The user if verified otherwise, None
+        :raises HTTPException: If verification fails.
+        """
+        serializer = self._getserializer(RESET_TOKEN_KEY, "password-reset")
+        email = self.decode_url_safe_token(token, serializer)
+
+        db_user = self.user_crud.find_by(email=email)
+        if db_user:
+           hashed_password = self.hash_password(password)
+           return self.user_crud.update_fields(db_user.id, hashed_password=hashed_password) is not None
+
+        raise HTTPException(404, "[verify_email] Email could not be verified")
 
 
     def refresh(self, refresh_token):

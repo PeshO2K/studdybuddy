@@ -5,10 +5,35 @@ from .mongo_db import get_collection
 from . import crud, schemas, auth ,models
 from fastapi.responses import JSONResponse
 import uuid
+from fastapi_mail import FastMail, ConnectionConfig, MessageSchema,MessageType
+import os
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv()
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL')
+
+
+mail_conf = ConnectionConfig(
+    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
+    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
+    MAIL_FROM=os.getenv("MAIL_FROM"),
+    MAIL_PORT=os.getenv("MAIL_PORT"),
+    MAIL_SERVER=os.getenv("MAIL_SERVER"),
+    MAIL_STARTTLS=os.getenv("MAIL_STARTTLS"),
+    MAIL_SSL_TLS=os.getenv("MAIL_SSL_TLS"),
+    USE_CREDENTIALS=os.getenv("USE_CREDENTIALS"),
+    VALIDATE_CERTS=os.getenv("VALIDATE_CERTS"),
+    TEMPLATE_FOLDER=Path(__file__).parent / 'templates'
+)
+
+
+
 
 # TODO: Clean UP, comments
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
+mail = FastMail(mail_conf)
 
 # Dependencies
 
@@ -43,16 +68,76 @@ def is_user_auth(token: str = Depends(auth.oauth2_scheme), user_crud=Depends(get
 # Finds all chat sessions for the user, formats them, and returns the formatted list
 def get_formatted_chat_sessions(user_id, chat_crud):
     sessions = chat_crud.find_all(user_id=user_id)
-    formatted_sessions = chat_crud.format(sessions)
-    return formatted_sessions
+    if sessions:
+        formatted_sessions = chat_crud.format(sessions)
+        return formatted_sessions
+    return {}
+
+def create_message(email_to:str,subject:str,body:dict):
+    message = MessageSchema(
+        recipients=[email_to],
+        subject=subject,
+        template_body=body,
+        subtype=MessageType.html
+    )
+    return message
+async def send_mail(details:schemas.SendEmailSchema, email_template:str):
+    email = create_message(details.email_to,
+                           details.subject,
+                           details.body
+                           )
+    await mail.send_message(email,email_template)
+    return {"details": "Email sent Successfully"}
+
 
 
 # Registers a new user in the system
 # Expects a payload matching the UserCreateSchema
 # Returns the newly created user's details after successful registration
-@app.post('/signup',  status_code=201, tags=['Registration'])
+@app.post('/signup', response_model=schemas.UserRegisteredSchema,  status_code=201, tags=['Registration'])
 async def signup_user(user:schemas.UserCreateSchema, user_crud=Depends(get_user_crud)):
-    return auth.Auth(user_crud).register_user(user)
+    # return auth.Auth(user_crud).register_user(user)
+    new_user, verification_token =  auth.Auth(user_crud).register_user(user)
+    # TODO: 
+    # 1. Send Verification Email with a link
+    verification_link = FRONTEND_BASE_URL+f'/?token={verification_token}'
+    html_body={"link":verification_link}
+#     html_body=f"""
+#     <h1>Verify your email</h1>
+# <p>Please click this <a href="{verification_link}">link</a> to verify your email address</p>
+
+#     """
+    details = schemas.SendEmailSchema(
+        email_to=new_user.email, subject="Verify your email", body=html_body)
+    await send_mail(details, "verification.html")
+    return{**new_user.to_dict(),"details":"User created successfully, check email for verification link"}
+    
+@app.post('/verify', status_code=200, tags=['Resgistration'])
+async def verify_email(token_data:schemas.AccountVerificationSchema, user_crud = Depends(get_user_crud)):
+    if auth.Auth(user_crud).verify_email(token_data.token):
+        return {'detail':"Email has been verified"}
+    
+# Reset Password 
+@app.post('/forgot-password', status_code=200, tags=["Registration"])
+async def request_password_reset(reset_data:schemas.PasswordResetRequest, user_crud = Depends(get_user_crud)):
+    reset_token = auth.Auth(user_crud).request_reset(reset_data.email)
+    reset_link = FRONTEND_BASE_URL+f'/?reset={reset_token}'
+    html_body = {"link": reset_link}
+
+    details = schemas.SendEmailSchema(
+        email_to=reset_data.email, subject="Password Reset", body=html_body)
+    await send_mail(details, "reset.html")
+    return {"email":reset_data.email, "details": "Password reset initiated check email for reset link"}
+
+
+@app.post('/reset-password', status_code=200, tags=["Registration"])
+async def reset_user_password(reset_data:schemas.PasswordResetConfirm, user_crud = Depends(get_user_crud)):
+    if reset_data.new_password:        
+        if auth.Auth(user_crud).reset_password(reset_data.token, reset_data.new_password):
+            return {'detail': "Password has been rest successfully"}
+    raise HTTPException(400, "Please enter a password")
+
+
 
 
 # Authenticates a user and provides access & refresh tokens
@@ -99,6 +184,7 @@ async def get_user_details(current_user: schemas.UserSchema = Depends(is_user_au
 @app.get('/users/me/sessions/', status_code=200,tags=['User Session'])
 async def get_user_sessions(current_user: schemas.UserSchema = Depends(is_user_auth), chat_crud = Depends(get_chat_crud)):
     return get_formatted_chat_sessions(current_user.id,  chat_crud)
+    
 
 
 # Creates a new chat session for the authenticated user

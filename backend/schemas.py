@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 
 # Create Chat Session Schemas
@@ -39,9 +39,11 @@ class UserBaseSchema(BaseModel):
 
 class UserLogInSchema(UserBaseSchema):
     password: str
+
 class UserProfileSchema(UserBaseSchema):
     email: EmailStr
-
+class UserRegisteredSchema(UserProfileSchema):
+    details: str
 
 class UserCreateSchema(UserLogInSchema):
     email: EmailStr
@@ -60,3 +62,20 @@ class UserSchema(UserBaseSchema):
 class TokenSchema(BaseModel):
     access_token: str
     token_type:str
+class SendEmailSchema(BaseModel):
+    email_to: EmailStr
+    subject: str
+    body: Any
+
+# Passswords
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class AccountVerificationSchema(BaseModel):
+    token: str
+
+
+class PasswordResetConfirm(AccountVerificationSchema):
+    new_password: str

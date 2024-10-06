@@ -1,3 +1,7 @@
+requests==2.32.3
+streamlit==1.36.0
+python-dotenv==1.0.1
+pysqlite3-binary
 langchain-groq
 duckduckgo-search
 langchain
@@ -10,12 +14,5 @@ bs4
 huggingface_hub 
 unstructured 
 sentence_transformers
-streamlit
 chromadb
-python-dotenv
-pysqlite3-binary
-fastapi
-sqlalchemy 
-pymongo
-itsdangerous=2.2.0
-fastapi-mail=1.4.1
+beautifulsoup4==4.12.3

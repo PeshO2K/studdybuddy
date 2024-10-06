@@ -1,9 +1,9 @@
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 import os
 import pysqlite3
 import sys
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 from langchain_groq import ChatGroq
-from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain_chroma import Chroma
 import chromadb
 from chromadb.config import Settings
@@ -12,7 +12,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 chroma_client = chromadb.HttpClient(
-    host=os.getenv("vectorDB_host"), port=8000, settings=Settings(allow_reset=True))
+    host=os.getenv("vectorDB_host"),
+	  port=os.getenv("vectorDB_port"),
+	    settings=Settings(
+			allow_reset=True,
+        chroma_client_auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
+		chroma_client_auth_credentials="test-token"))
+# client = chromadb.HttpClient(
+#     settings=Settings(chroma_client_auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
+#                       chroma_client_auth_credentials="test-token"))
+
 print("The api pinging",chroma_client.heartbeat())
 
 #LLM

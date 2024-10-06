@@ -7,19 +7,22 @@ from itsdangerous import URLSafeTimedSerializer
 from . import crud, schemas
 from datetime import datetime, timedelta, timezone
 import logging
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 #TODO: refactor, cleanup,comment, remove test data
 
-ALGORITHM = 'HS256'
-ACCESS_TOKEN_EXP = timedelta(minutes=20)
+ALGORITHM = os.getenv('ALGORITHM')
+ACCESS_TOKEN_EXP = timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXP')))
 ACCESS_TOKEN_KEY = 'veryfakeaccesstokenprivatekey'
-REFRESH_TOKEN_EXP = timedelta(minutes=40)
-REFRESH_TOKEN_KEY = 'veryfakerefreshtokenprivatekey'
-VERIFICATION_TOKEN_KEY = 'veryfakeemailverificationtokenprivatekey'
-RESET_TOKEN_KEY = 'veryfakeresettokenprivatekey'
+REFRESH_TOKEN_EXP = timedelta(minutes=int(os.getenv('REFRESH_TOKEN_EXP')))
+REFRESH_TOKEN_KEY = os.getenv('REFRESH_TOKEN_KEY')
+VERIFICATION_TOKEN_KEY = os.getenv('VERIFICATION_TOKEN_KEY')
+RESET_TOKEN_KEY = os.getenv('RESET_TOKEN_KEY')
 
 
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

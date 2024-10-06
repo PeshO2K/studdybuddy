@@ -1,7 +1,7 @@
 import streamlit as st
 from .generic_form import generic_form
 from utils.error_handler import print_error
-from utils.auth_handler import authorise, loggedin_session
+from utils.auth_handler import  loggedin_session
 import os
 from dotenv import load_dotenv
 load_dotenv()

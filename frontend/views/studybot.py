@@ -1,7 +1,8 @@
 import streamlit as st
 import time
 import uuid
-#from rag.rag_app import app
+from rag.rag.rag_app import app
+from rag.rag.agents import generate_title
 from utils.sessions_handler import fetch_user_sessions, fetch_session_log,save_session,create_new_session
 
 
@@ -33,8 +34,8 @@ session_id_to_index = {sid: idx for idx, sid in enumerate(
 # Display chat messages
 def print_messages():
     for message in st.session_state.messages:
-        avatar_link = "frontend/assets/face_5_50dp_blackNYellow.svg" if message[
-            "role"] == "user" else "frontend/assets/robot_2_50dp_purple.svg"
+        avatar_link = "assets/face_5_50dp_blackNYellow.svg" if message[
+            "role"] == "user" else "assets/robot_2_50dp_purple.svg"
         with st.chat_message(message["role"], avatar=avatar_link):
             st.write(message["content"])
             
@@ -46,8 +47,15 @@ def update_history():
       
       # TODO: use an llm to get an appropritate title for the chat
       temp_sess_id = str(uuid.uuid4())
+      temp_title = f"New Chat {temp_sess_id[:8]}"
+      try:
+        new_title = generate_title(st.session_state.messages)
+      except Exception as e:
+        new_title = temp_title
+        
+     
       session_details = {
-          "title": f"New Chat {temp_sess_id[:8]}",
+          "title": new_title,
           "messages": st.session_state.messages
       }
       # create new session and get id using api
@@ -63,7 +71,8 @@ def update_history():
        updated_log = st.session_state.messages
        
        new_messages = updated_log[len(prev_log)-len(updated_log):]
-       save_session(st.session_state.bot_active_session,new_messages)
+       session_details = {"title":user_sessions[st.session_state.bot_active_session]["title"],"messages":new_messages}
+       save_session(st.session_state.bot_active_session,session_details)
 
 
 
@@ -81,10 +90,11 @@ def generate_response(prompt_input):
     print(f"Generating response for: {prompt_input}")
     inputs = {"initial_question": prompt_input}
 
-    outputs = {"final_output_response": {
-        "final_answer": "The ai has responded"}}
-    # for step_output in app.stream(inputs):
-    #    outputs.update(step_output)
+    # outputs = {"final_output_response": {
+    #     "final_answer": "The ai has responded"}}
+    outputs={}
+    for step_output in app.stream(inputs):
+       outputs.update(step_output)
 
     final_output_response = outputs.get(
         "final_output_response", {"final_answer": "No response generated"})
@@ -108,7 +118,9 @@ if "pick_chat" not in st.session_state:
 
 if st.sidebar.button('New Chat'):
     st.session_state.pick_chat = "new-chat"
-
+#debug:
+print( "The picked session: ", st.session_state.sessions_history[
+    st.session_state.pick_chat])
 current_log = st.session_state.sessions_history[
     st.session_state.pick_chat]["messages"]
 
@@ -136,24 +148,26 @@ if "messages" in st.session_state :
 # Main chat interface
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user", avatar="frontend/assets/face_5_50dp_blackNYellow.svg"):
+    with st.chat_message("user", avatar="assets/face_5_50dp_blackNYellow.svg"):
       st.markdown(prompt)
       print(prompt)
 
     with st.spinner("Thinking..."):
+      # for debugging:
+        llm_answer = generate_response(prompt)
         try:
 
-            llm_answer = generate_response(prompt)
+            # llm_answer = generate_response(prompt)
 
-            with st.chat_message("assistant", avatar="frontend/assets/robot_2_50dp_purple.svg"):
+            with st.chat_message("assistant", avatar="assets/robot_2_50dp_purple.svg"):
                 st.write_stream(stream_output(llm_answer))
                 print(stream_output(llm_answer))
 
             st.session_state.messages.append(
                 {"role": "assistant", "content": llm_answer})
         except Exception as e:
-            # st.error(f"An error occurred: {e}")
-            st.error("An error occurred!")
+            st.error(f"An error occurred: {e}")
+            # st.error("An error occurred!")
             st.session_state.messages.append(
                 {"role": "assistant", "content": "An error occurred while generating the response."})
     update_history()

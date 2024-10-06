@@ -1,6 +1,6 @@
 import streamlit as st
 from forms.contact_form import contact_form
-import requests
+
 
 
 @st.experimental_dialog("Contact Me")
@@ -13,7 +13,7 @@ def show_contact_form():
 #-------Hero section
 col1,col2 =st.columns(2,gap="small",vertical_alignment='center')
 with col1:
-  st.image("frontend/assets/my_dip.jpg", width=200)
+  st.image("assets/my_dip.jpg", width=200)
 with col2:
   st.title("A Person", anchor=False)
   st.write("Electrical Engineer, Solutions Architect, FullStack Developer")

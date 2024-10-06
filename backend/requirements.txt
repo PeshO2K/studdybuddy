@@ -1,0 +1,15 @@
+# Positive
+email_validator==2.2.0
+Jinja2==3.1.4
+itsdangerous==2.2.0
+passlib==1.7.4
+pydantic==2.9.2
+PyJWT==2.9.0
+pymongo==4.9.1
+SQLAlchemy==2.0.35
+uvicorn==0.30.6
+fastapi==0.115.0
+fastapi-mail==1.4.1
+python-dotenv==1.0.1
+python-jose==3.3.0
+psycopg2-binary

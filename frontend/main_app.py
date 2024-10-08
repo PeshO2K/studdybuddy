@@ -5,6 +5,14 @@ from forms.reset_form import reset_form
 from forms.reset_link_form import reset_link_form
 from utils.auth_handler import logout, handle_verification
 
+# TODO: 
+# 1. Copy for the sign in an log in pages:
+# prevoew of the application,
+# allow limited usage?
+# profile?
+# #
+
+
 # # #------Initialise session state attributes
 if 'authentication_status' not in st.session_state:
     st.session_state.authentication_status = None

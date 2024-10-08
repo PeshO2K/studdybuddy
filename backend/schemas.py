@@ -13,6 +13,7 @@ class ChatSessionBaseSchema(BaseModel):
 
 class ChatSessionCreateSchema(ChatSessionBaseSchema):
     title: str
+    summary: str
     
 
 class ChatSessionUpdateSchema(ChatSessionCreateSchema):

@@ -2,8 +2,9 @@ import streamlit as st
 import time
 import uuid
 from rag.rag.rag_app import app
-from rag.rag.agents import generate_title
+from rag.rag.agents import generate_title, summarise_chat
 from utils.sessions_handler import fetch_user_sessions, fetch_session_log,save_session,create_new_session
+
 
 
 
@@ -43,20 +44,24 @@ def print_messages():
 # # update session_history
 def update_history():
    print("--updating history--")
+   
    if st.session_state.bot_active_session == 'new-chat':
       
       # TODO: use an llm to get an appropritate title for the chat
       temp_sess_id = str(uuid.uuid4())
-      temp_title = f"New Chat {temp_sess_id[:8]}"
+      
       try:
-        new_title = generate_title(st.session_state.messages)
+        # get a summary of the chats and generate title
+        chat_summary = summarise_chat(st.session_state.messages)
+        new_title = generate_title(chat_summary)
       except Exception as e:
-        new_title = temp_title
+        new_title = f"New Chat {temp_sess_id[:8]}"
         
      
       session_details = {
           "title": new_title,
-          "messages": st.session_state.messages
+          "messages": st.session_state.messages,
+          "summary":chat_summary
       }
       # create new session and get id using api
       new_sess_id = create_new_session(session_details)
@@ -71,7 +76,10 @@ def update_history():
        updated_log = st.session_state.messages
        
        new_messages = updated_log[len(prev_log)-len(updated_log):]
-       session_details = {"title":user_sessions[st.session_state.bot_active_session]["title"],"messages":new_messages}
+       # add chat summariser
+       old_chat_summary = st.session_state.get("summary",None)
+       new_chat_summary = summarise_chat(new_messages, old_chat_summary)
+       session_details = {"title":user_sessions[st.session_state.bot_active_session]["title"],"messages":new_messages, "summary":new_chat_summary}
        save_session(st.session_state.bot_active_session,session_details)
 
 
@@ -88,7 +96,11 @@ def stream_output(stream_object):
 # Function to generate response
 def generate_response(prompt_input):
     print(f"Generating response for: {prompt_input}")
-    inputs = {"initial_question": prompt_input}
+    # inputs = {"initial_question": prompt_input}
+    # inputs = {"input": prompt_input, "chat_history": st.session_state.messages}
+    chat_summary = st.session_state.sessions_history[
+        st.session_state.pick_chat].get("summary", "")
+    inputs = {"input": prompt_input, "chat_history": chat_summary}
 
     # outputs = {"final_output_response": {
     #     "final_answer": "The ai has responded"}}

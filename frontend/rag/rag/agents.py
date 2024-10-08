@@ -1,35 +1,236 @@
 from langchain.prompts import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder #Added this 7/10
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from .models import GROQ_LLM, retriever
 from langchain_core.runnables import RunnablePassthrough
 
+# ##***************************
+# # GENERATE SUMMARY
+
+
+# def summarise_chat(chat_messages: list, summary: str = None):
+#   if summary is None:
+#     summary_prompt = """Create a summary of the chat """
+#   else:
+#     summary_prompt = f"""This is summary of the conversation to date: {summary}\n\n
+#     Ensure information from the previous summary in properly featured in the new summary. Extend the summary by taking into account these new messages:"""
+
+#   summarise_history_prompt = ChatPromptTemplate.from_messages(
+#       [
+#           ("system", """You are a master at generating chat summaries with no preamble or exaplanation. Do not answer questions nor provide explanation. 
+#           Strictly provide a succinct summary of the chat. Enusre all the important entitites are captured"""),
+#           MessagesPlaceholder("chat_history"),
+#           ("user", summary_prompt)
+#       ]
+#   )
+#   summarise_history_chain = summarise_history_prompt | GROQ_LLM | StrOutputParser()
+#   response = summarise_history_chain.invoke({"chat_history": chat_messages})
+#   return response
+
+
+# # GENERATE TITLE
+# # gen_title_prompt = PromptTemplate(
+# #     template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+# #     You are a master at summarising chat data and generating the most suitable title for the chat.
+
+
+# #      <|eot_id|><|start_header_id|>user<|end_header_id|>
+# #     Generate the most suitable title for the chat in a maximum of five words.
+
+
+# #             Output the title only without preamble or explanation  \
+# #             eg:
+# #             'Nginx Configuration ' \
+
+# #     CHAT:\n\n {chat} \n\n
+# #     <|eot_id|>
+# #     <|start_header_id|>assistant<|end_header_id|>
+# #     """,
+# #     input_variables=["chat"],
+# # )
+
+
+# def generate_title(chat_summary: str):
+#     gen_title_prompt = PromptTemplate(
+#         template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+#     You are a master at generating the most suitable title for a chat summary
+
+
+#      <|eot_id|><|start_header_id|>user<|end_header_id|>
+#     Generate the most suitable title for the summary in a maximum of five words.
+
+
+#             Output the title only without preamble or explanation  \
+#             eg:
+#             'Nginx Configuration ' \
+
+#     SUMMARY:\n\n {summary} \n\n
+#     <|eot_id|>
+#     <|start_header_id|>assistant<|end_header_id|>
+#     """,
+#         input_variables=["summary"],
+#     )
+
+#     title_generator = gen_title_prompt | GROQ_LLM | StrOutputParser()
+
+#     return title_generator.invoke(chat_summary)
+
+
+# # CONTEXTUALISE QUESTION : Added this 7/10
+# # contextualize_q_system_prompt = (
+# #     "Given a chat history and the latest user question "
+# #     "which might reference context in the chat history, "
+# #     "formulate a standalone question which can be understood "
+# #     "without the chat history. Do NOT answer the question, "
+# #     "just reformulate it if needed and otherwise return it as is.no preamble no explanation"
+# # )
+# # contextualize_q_prompt = ChatPromptTemplate.from_messages(
+# #     [
+# #         ("system", contextualize_q_system_prompt),
+# #         MessagesPlaceholder("chat_history"),
+# #         ("human", "{input}"),
+# #     ]
+# # )
+# contextualize_q_prompt = PromptTemplate(
+#     template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+#     You are a master at generating standalone contextualised questions which might reference context in the  
+#      summary of previous chats 
+
+
+#      <|eot_id|><|start_header_id|>user<|end_header_id|>
+#     Given the latest user question, formulate a standalone question which can be understood
+#     without the chat history.The formulated question must capture context from the summary if any. Do NOT answer the question, just reformulate it if needed and 
+#     otherwise return it as is.no preamble no explanation
+
+
+#             Output the question only without preamble or explanation  \
+#             eg given the scenario below:
+#             'summary: User asked for the sum of 2 and 4 \
+#             question: what is their product?' \
+#             the output will be: 'what is the product of 2 and 4'
+            
+
+#     QUESTION:\n\n {input} \n\n
+#     SUMMARY:\n\n {chat_history} \n\n
+#     <|eot_id|>
+#     <|start_header_id|>assistant<|end_header_id|>
+#     """,
+#     input_variables=["input", "chat_history"],
+# )
+# contextualize_qn_chain = contextualize_q_prompt | GROQ_LLM | StrOutputParser()
+
+# ##***************************
+# GENERATE SUMMARY
+def summarise_chat(chat_messages: list, summary: str = None):
+  if summary is None:
+    summary_prompt = """Create a summary of the chat """
+  else:
+    summary_prompt = f"""This is summary of the conversation to date: {summary}\n\n
+    Extend the summary by taking into account these new messages:"""
+
+  summarise_history_prompt = ChatPromptTemplate.from_messages(
+      [
+          ("system", "You are a master at generating chat summaries with no preamble or exaplanation. Do not answer questions nor provide explanation. Strictly provide a succinct summary of the chat"),
+          MessagesPlaceholder("chat_history"),
+          ("user", summary_prompt)
+      ]
+  )
+  summarise_history_chain = summarise_history_prompt | GROQ_LLM | StrOutputParser()
+  response = summarise_history_chain.invoke({"chat_history": chat_messages})
+  return response
+
+
+
+
+
 # GENERATE TITLE
-gen_title_prompt = PromptTemplate(
-    template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-    You are a master at summarising chat data and generating the most suitable title for the chat.
+# gen_title_prompt = PromptTemplate(
+#     template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+#     You are a master at summarising chat data and generating the most suitable title for the chat.
     
 
+#      <|eot_id|><|start_header_id|>user<|end_header_id|>
+#     Generate the most suitable title for the chat in a maximum of five words.
+
+
+#             Output the title only without preamble or explanation  \
+#             eg:
+#             'Nginx Configuration ' \
+
+#     CHAT:\n\n {chat} \n\n
+#     <|eot_id|>
+#     <|start_header_id|>assistant<|end_header_id|>
+#     """,
+#     input_variables=["chat"],
+# )
+
+
+def generate_title(chat_summary:str):
+    gen_title_prompt = PromptTemplate(
+        template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+    You are a master at generating the most suitable title for a chat summary
+
+
      <|eot_id|><|start_header_id|>user<|end_header_id|>
-    Generate the most suitable title for the chat in a maximum of five words.
+    Generate the most suitable title for the summary in a maximum of five words.
 
 
             Output the title only without preamble or explanation  \
             eg:
             'Nginx Configuration ' \
 
-    CHAT:\n\n {chat} \n\n
+    SUMMARY:\n\n {summary} \n\n
     <|eot_id|>
     <|start_header_id|>assistant<|end_header_id|>
     """,
-    input_variables=["chat"],
+        input_variables=["summary"],
+    )
+
+
+    title_generator = gen_title_prompt | GROQ_LLM | StrOutputParser()
+
+    return title_generator.invoke(chat_summary)
+
+
+# CONTEXTUALISE QUESTION : Added this 7/10
+# contextualize_q_system_prompt = (
+#     "Given a chat history and the latest user question "
+#     "which might reference context in the chat history, "
+#     "formulate a standalone question which can be understood "
+#     "without the chat history. Do NOT answer the question, "
+#     "just reformulate it if needed and otherwise return it as is.no preamble no explanation"
+# )
+# contextualize_q_prompt = ChatPromptTemplate.from_messages(
+#     [
+#         ("system", contextualize_q_system_prompt),
+#         MessagesPlaceholder("chat_history"),
+#         ("human", "{input}"),
+#     ]
+# )
+contextualize_q_prompt = PromptTemplate(
+    template="""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+    You are a master at generating standalone contextualised questions which might reference context in the  
+     summary of previous chats 
+
+
+     <|eot_id|><|start_header_id|>user<|end_header_id|>
+    Given the latest user question, formulate a standalone question which can be understood
+    without the chat history. Do NOT answer the question, just reformulate it if needed and 
+    otherwise return it as is.no preamble no explanation
+
+
+            Output the title only without preamble or explanation  \
+            eg:
+            'Nginx Configuration ' \
+
+    QUESTION:\n\n {input} \n\n
+    SUMMARY:\n\n {chat_history} \n\n
+    <|eot_id|>
+    <|start_header_id|>assistant<|end_header_id|>
+    """,
+    input_variables=["input", "chat_history"],
 )
-
-title_generator = gen_title_prompt | GROQ_LLM | StrOutputParser()
-
-
-def generate_title(chat_messages:list):
-	return title_generator.invoke(chat_messages)
-
+contextualize_qn_chain = contextualize_q_prompt | GROQ_LLM | StrOutputParser()
 
 #CATEGORIZE QUESTION
 prompt = PromptTemplate(

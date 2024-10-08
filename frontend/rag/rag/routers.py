@@ -1,6 +1,16 @@
 from .agents import rag_router, web_research_router, rewrite_router
-
-
+#added route to contextualise question 7/10
+def route_to_contextulise_qn(state):
+    """Route question to contextulaiser or not.
+    Args:
+        state(dict): the current graph state
+    Returns:
+        str: Next node to call"""
+    if state.get('chat_history',None):
+        return 'contextualise'
+    else:
+        return 'as_is'
+    
 def route_to_research_rag(state):
     """
     Route question to web search or not.

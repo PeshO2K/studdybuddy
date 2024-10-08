@@ -25,7 +25,7 @@ class CRUDMongo:
         """
         self.collection = collection
 
-    def save_chat_log(self, session_id: UUID, messages: List[Dict]) -> bool:
+    def save_chat_log(self, session_id: UUID, messages: List[Dict], summary:str) -> bool:
         """
         Saves a chat log to the MongoDB collection.
         
@@ -41,6 +41,7 @@ class CRUDMongo:
             chat_log = {
                 "_id": session_id,
                 "messages": messages,
+                "summary": summary, # Added 8/10
                 "updated_at": datetime.now(timezone.utc)
             }
             result = self.collection.insert_one(chat_log)
@@ -62,7 +63,7 @@ class CRUDMongo:
         """
         return self.collection.find_one({"_id": session_id})
 
-    def update_chat_log(self, session_id: UUID, new_messages: List[Dict]) -> bool:
+    def update_chat_log(self, session_id: UUID, new_messages: List[Dict], new_summary:str) -> bool:
         """
         Updates an existing chat log by appending new messages.
         
@@ -77,7 +78,8 @@ class CRUDMongo:
             result = self.collection.update_one(
                 {"_id": session_id},
                 {"$push": {"messages": {"$each": new_messages}},
-                 "$set": {"updated_at": datetime.now(timezone.utc)}
+                 "$set": {"updated_at": datetime.now(timezone.utc)},
+                 "$set": {"summary":new_summary} # Added 8/10
                 #  "$currentDate": {"updated_at": True}
                  }
 
@@ -448,8 +450,9 @@ class ChatSessionCRUD(Formatter):
         chat_metadata = self.sql_crud.create(new_chat_session)
         if chat_metadata:
             # create an empty log for the chat
+            # 8/10 : passing session data instead of messaages
             chat_log = self.mongo_crud.save_chat_log(
-                chat_metadata.id, chat_session_data.messages)
+                chat_metadata.id, chat_session_data.messages, chat_session_data.summary)
             if chat_log:
                 return chat_metadata
             self.sql_crud.delete(chat_metadata)
@@ -532,7 +535,9 @@ class ChatSessionCRUD(Formatter):
             #update the title
             updated_title = self.update_fields(session_id, title=chat_session.title, updated_at=datetime.now(timezone.utc))
         if chat_session.messages:
-            updated_log = self.update_logs(session_id, chat_session.messages)
+            # Added 8/10 if new messages, update messages and summary
+            updated_log = self.update_logs(
+                session_id, chat_session.messages, chat_session.summary)
         return updated_title , updated_log
         
         # return self.sql_crud.update(models.ChatSession, session_id, **kwargs)
@@ -550,7 +555,7 @@ class ChatSessionCRUD(Formatter):
         """
         return self.sql_crud.update(models.ChatSession, session_id, **kwargs)
 
-    def update_logs(self, session_id, messages) -> bool:
+    def update_logs(self, session_id, messages,summary) -> bool:
         """
         Updates the chat logs for a specific session.
         
@@ -561,7 +566,7 @@ class ChatSessionCRUD(Formatter):
         Returns:
             bool: True if the update was successful, False otherwise.
         """
-        return self.mongo_crud.update_chat_log(session_id, messages)
+        return self.mongo_crud.update_chat_log(session_id, messages, summary)
     
     def get_logs(self, session_id,user_id)-> Optional[Dict]:
         """

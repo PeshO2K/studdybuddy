@@ -1,5 +1,17 @@
 from rag.utils.file_operations import write_markdown_file
-from .agents import question_category_generator
+from .agents import question_category_generator, contextualize_qn_chain
+
+
+def contextualise_question(state):
+    """Take the initial qn and contextualise it"""
+    print("\n---CONTEXTULAISING INPUT---")
+    input_question = state['input']
+    chat_history = state.get('chat_history', [])
+    if chat_history:
+      contextualised_qn = contextualize_qn_chain.invoke(
+          {"input": input_question, "chat_history": chat_history})
+      return {"initial_question": contextualised_qn}
+    return {"initial_question": input_question}
 
 
 
@@ -35,6 +47,7 @@ def state_printer(state):
     print(f"Final Answer: {state['final_answer']} \n" )
     print(f"Research Info RAG: {state.get('research_info_rag',[])} \n")
     print(f"Research Info WEB: {state.get('research_info_web',[])} \n")
-    print(f"RAG Questions: {state.get('rag_questions',[])} \n")
-    
+    print(f"RAG Questions: {state.get('rag_questions', [])} \n")
+    print(f"Chat_history: {state.get('chat_history', [])} \n")
+    print("****************************************\n\n\n")
     return
